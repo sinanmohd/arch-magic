@@ -68,8 +68,16 @@ mkdir /boot/efi
 mount /dev/$efipartition /boot/efi
 grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB
 grub-mkconfig -o /boot/grub/grub.cfg
-pacman --noconfirm -S linux-headers doas pipewire pipewire-pulse alsa-utils pamixer firefox vim wget git zsh connman iwd unzip
+pacman --noconfirm -S linux-headers doas pipewire pipewire-pulse alsa-utils pamixer vim wget git connman iwd
 pacman --noconfirm -Rns sudo
+
+cpu=$(cat /proc/cpuinfo | grep -m1 'vendor' | cut -d" " -f 2)
+if [[ $cpu = GenuineIntel ]] ; then
+	pacman --noconfirm -S intel-ucode
+elif [[ $cpu = AuthenticAMD ]] ; then
+	pacman --noconfirm -S amd-ucode
+fi
+
 systemctl enable connman.service
 systemctl enable iwd
 echo "permit :wheel" > /etc/doas.conf

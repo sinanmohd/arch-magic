@@ -1,7 +1,7 @@
 # Arch Script
 
 ```
-curl https://gitlab.com/sinanmohd/arch-magic/-/raw/master/arch.sh > arch.sh
+curl https://gitlab.com/sinanmohd/arch-magic/raw/master/arch.sh > arch.sh
 ```
 
 ```
