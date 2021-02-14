@@ -5,9 +5,9 @@ echo "
 ██╔══██║██╔══██╗██║░░██╗██╔══██║  ░╚═══██╗██║░░██╗██╔══██╗██║██╔═══╝░░░░██║░░░
 ██║░░██║██║░░██║╚█████╔╝██║░░██║  ██████╔╝╚█████╔╝██║░░██║██║██║░░░░░░░░██║░░░
 ╚═╝░░╚═╝╚═╝░░╚═╝░╚════╝░╚═╝░░╚═╝  ╚═════╝░░╚════╝░╚═╝░░╚═╝╚═╝╚═╝░░░░░░░░╚═╝░░░"
+timedatectl set-ntp true
 pacman --noconfirm -Sy archlinux-keyring
 loadkeys us
-timedatectl set-ntp true
 fdisk -l
 echo "Where do you like to install Arch:"
 read drive
@@ -19,9 +19,15 @@ mount /dev/$partition /mnt
 
 read -p "Format efi partition? WARNING!!! [y,n]:" answer
 if [[ $answer = y ]] ; then
-	echo "Enter EFI partition: "
-	read efipartition
-	mkfs.vfat -F 32 /dev/$efipartition
+        eficheck=$(fdisk -l | grep EFI | cut -c1)
+        if [[ $eficheck = / ]] ; then
+                efipartition=$(fdisk -l | grep EFI | cut -d" " -f1 | cut -c6-)
+        else
+                echo "Enter EFI partition"
+                read efipartition
+        fi
+
+        mkfs.vfat -F 32 /dev/$efipartition
 fi
 
 read -p "Did you create home partition? [y,n]:" answer2
@@ -30,10 +36,7 @@ if [[ $answer2 = y ]] ; then
 	fdisk -l
 	echo "Enter home partition: "
 	read homepartition
-	read -p "Format home partition WARNING!!! [y.n]:" answer3
-	if [[ $answer3 = y ]] ; then
-		mkfs.ext4 /dev/$homepartition
-	fi
+	mkfs.ext4 /dev/$homepartition
 	mount /dev/$homepartition /mnt/home
 fi
 
@@ -53,20 +56,21 @@ locale-gen
 echo "LANG=en_US.UTF-8" > /etc/locale.conf
 echo "KEYMAP=us" > /etc/vconsole.conf
 echo "Enter Hostname: "
-read hostname
-echo $hostname > /etc/hostname
-echo "127.0.0.1       localhost" >> /etc/hosts
-echo "::1             localhost" >> /etc/hosts
-echo "127.0.1.1       $hostname.localdomain $hostname" >> /etc/hosts
 mkinitcpio -P
-passwd
 pacman --noconfirm -S grub efibootmgr os-prober
-fdisk -l
-echo "Enter EFI partition:"
-read efipartition
+
+eficheck=$(fdisk -l | grep EFI | cut -c1)
+if [[ $eficheck = / ]] ; then
+	efipartition=$(fdisk -l | grep EFI | cut -d" " -f1 | cut -c6-)
+else
+	fdisk -l
+	echo "Enter EFI partition"
+	read efipartition
+fi
+
 mkdir /boot/efi
 mount /dev/$efipartition /boot/efi
-grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB
+grub-install --target=x86_64-efi --bootloader-id=GRUB
 grub-mkconfig -o /boot/grub/grub.cfg
 pacman --noconfirm -S linux-headers doas pipewire pipewire-pulse alsa-utils pamixer vim wget git connman iwd
 pacman --noconfirm -Rns sudo
@@ -81,9 +85,18 @@ fi
 systemctl enable connman.service
 systemctl enable iwd
 echo "permit :wheel" > /etc/doas.conf
+echo "Enter Hostname: "
+read hostname
+echo $hostname > /etc/hostname
+echo "127.0.0.1       localhost" >> /etc/hosts
+echo "::1             localhost" >> /etc/hosts
+echo "127.0.1.1       $hostname.localdomain $hostname" >> /etc/hosts
+echo "Enter root password"
+passwd
 echo "Enter Username:"
 read username
 useradd -m -g wheel $username
+echo "Enter user password"
 passwd $username
 echo "alias sudo='doas'" >> /home/$username/.bashrc
 echo "Pre-Installation Finish Reboot now"
